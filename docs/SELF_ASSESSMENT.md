@@ -2,7 +2,9 @@
 
 ## What I built
 
-A working, deployable patient-encounter dashboard for rural telemedicine clinics. Nurses, doctors and administrators each get a different, server-enforced view of anonymised clinical data, with live updates and an append-only audit trail. I approached it primarily as a **security engineering** exercise: who can see what, how sessions fail safely, and how every change stays attributable. Then I made sure clinicians would find it quick to use on a phone at a busy PHC.
+**Live:** https://rural-outreach-dashboard.onrender.com · **Code:** https://github.com/Anushka-Patil19/patient-dashboard
+
+A working, deployed patient-encounter dashboard for rural telemedicine clinics. Nurses, doctors and administrators each get a different, server-enforced view of anonymised clinical data, with live updates and an append-only audit trail. I approached it primarily as a **security engineering** exercise: who can see what, how sessions fail safely, and how every change stays attributable. Then I made sure clinicians would find it quick to use on a phone at a busy PHC.
 
 ## Key architecture choices and trade-offs
 
@@ -42,12 +44,18 @@ A working, deployable patient-encounter dashboard for rural telemedicine clinics
 
 41 backend integration tests run against a real PostgreSQL, so constraints, triggers and SQL are tested rather than mocked. 7 frontend unit tests cover the validation and chart-colour logic. I also walked through every role end to end in a real browser, including the expired-session flow, on desktop and mobile viewports in light and dark mode.
 
+GitHub Actions runs on every push. One job runs both test suites, the production build and `npm audit`. A second job builds the production Docker image, boots it against PostgreSQL and smoke-tests it: frontend served, security headers present, 401 without login, demo login works, analytics return data, container not running as root. Both jobs pass. After deploying to Render, I repeated the login and dashboard checks for all three roles against the live URL.
+
+## Deployment
+
+The app is deployed on Render from the `render.yaml` Blueprint: one Docker web service plus managed PostgreSQL. Render generates the secrets at deploy time, so none are committed to the repository. Migrations run automatically on start, and synthetic demo data is loaded on first boot. HTTPS, HSTS and the secure refresh cookie are active in production.
+
 ## Difficulties and how I solved them
 
 - **Refresh-token reuse detection versus real browsers.** Strict reuse detection would log users out whenever two requests refresh with the same token at once, for example React's development double-render, a burst of parallel 401s, or two open tabs. I handled it with a deduplicated refresh promise in the client and a short grace window on the server that only applies to tokens revoked by normal rotation. Both cases have tests.
 - **SSE with header-based auth.** `EventSource` can't send an `Authorization` header, and putting tokens in URLs leaks them into logs. I used `fetch` streaming instead and made the server close the stream when the token expires, so a revoked session can't keep listening.
 - **Timezones.** PostgreSQL `DATE` values were being shifted by the server's local timezone. I parse them as plain strings, and "today" is always computed in IST so a clinic entering data at 11 pm isn't rejected as "in the future".
-- **Local environment.** Docker wasn't usable on my machine (no WSL), so I added an `embedded-postgres` script. Reviewers can run the full stack with only Node.js installed, while Docker and Render remain the deployment path.
+- **Local environment.** Docker wasn't usable on my machine (no WSL), so I added an `embedded-postgres` script. Reviewers can run the full stack with only Node.js installed. To avoid shipping a Dockerfile I had never built, I added a CI job that builds and smoke-tests the image on GitHub's runners before the Render deploy.
 
 ## What I would improve next
 
@@ -58,4 +66,5 @@ A working, deployable patient-encounter dashboard for rural telemedicine clinics
 5. **Small-cell suppression** in analytics (hide counts under 5 by district and diagnosis) to reduce re-identification risk in sparse villages.
 6. **Security monitoring**: forward `ACCESS_DENIED`, `LOGIN_FAILED` bursts and `REFRESH_TOKEN_REUSE` events to a SIEM with alert rules.
 7. **Scale-out**: Postgres `LISTEN/NOTIFY` for events, Redis-backed rate limits, materialised daily aggregates for state-level dashboards.
-8. **Playwright end-to-end tests in CI** (I ran the browser walkthrough locally), plus axe accessibility checks.
+8. **Playwright end-to-end tests in CI** (I ran the browser walkthrough locally and against the live site), plus axe accessibility checks.
+9. **Production hosting**: the free Render tier sleeps when idle and its database expires after about 30 days. A real rollout would use a paid instance in an Indian region (data residency), automated backups and uptime monitoring.

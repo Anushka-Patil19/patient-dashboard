@@ -4,7 +4,7 @@ A secure, mobile-friendly web app for rural health centres and telemedicine NGOs
 
 | | |
 |---|---|
-| **Live demo** | _add your deployed URL here after deploying (see [Deployment](#deployment))_ |
+| **Live demo** | **https://rural-outreach-dashboard.onrender.com** · demo password `Demo@2026!` for `admin@demo.local`, `doctor@demo.local`, `nurse@demo.local` (free tier: the first load after idling can take 30–60 s) |
 | **Stack** | React 19 + Vite + Tailwind + Recharts · Node.js + Express 5 · PostgreSQL · Docker |
 | **Docs** | [Architecture & security](docs/ARCHITECTURE.md) · [API reference](docs/API.md) · [Self-assessment](docs/SELF_ASSESSMENT.md) |
 
