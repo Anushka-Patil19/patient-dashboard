@@ -1,0 +1,7 @@
+**/node_modules
+**/dist
+**/.env
+backend/.pgdata
+backend/tests
+docs
+.git

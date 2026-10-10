@@ -1,0 +1,140 @@
+@import 'tailwindcss';
+
+/* Design tokens. Light by default; dark follows the OS unless data-theme says otherwise. */
+:root {
+  color-scheme: light;
+  --page: #f6f6f3;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6f6d68;
+  --line: #e1e0d9;
+  --line-strong: #c3c2b7;
+  --accent: #2a78d6;
+  --accent-ink: #1c5cab;
+  --accent-wash: #e8f1fc;
+  --danger: #c23333;
+  --danger-wash: #fbeaea;
+  --warn-wash: #fff5dc;
+  --warn-ink: #7a5300;
+  --good: #006300;
+  --good-wash: #e6f4e6;
+  /* chart slots (validated: see docs/ARCHITECTURE.md) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    color-scheme: dark;
+    --page: #0f0f0e;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #9a988f;
+    --line: #2c2c2a;
+    --line-strong: #44443f;
+    --accent: #3987e5;
+    --accent-ink: #86b6ef;
+    --accent-wash: #16263a;
+    --danger: #e66767;
+    --danger-wash: #3a1d1d;
+    --warn-wash: #3a2e10;
+    --warn-ink: #f3c867;
+    --good: #0ca30c;
+    --good-wash: #15301a;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page: #0f0f0e;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #9a988f;
+  --line: #2c2c2a;
+  --line-strong: #44443f;
+  --accent: #3987e5;
+  --accent-ink: #86b6ef;
+  --accent-wash: #16263a;
+  --danger: #e66767;
+  --danger-wash: #3a1d1d;
+  --warn-wash: #3a2e10;
+  --warn-ink: #f3c867;
+  --good: #0ca30c;
+  --good-wash: #15301a;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-wash: var(--accent-wash);
+  --color-danger: var(--danger);
+  --color-danger-wash: var(--danger-wash);
+  --color-warn-wash: var(--warn-wash);
+  --color-warn-ink: var(--warn-ink);
+  --color-good: var(--good);
+  --color-good-wash: var(--good-wash);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--page);
+  color: var(--ink);
+}
+
+@utility card {
+  @apply rounded-xl border border-line bg-surface;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-accent text-white hover:brightness-110;
+}
+@utility btn-secondary {
+  @apply btn border border-line-strong bg-surface text-ink hover:bg-surface-2;
+}
+@utility btn-danger {
+  @apply btn bg-danger text-white hover:brightness-110;
+}
+@utility btn-ghost {
+  @apply btn text-ink-2 hover:bg-surface-2;
+}
+@utility input {
+  @apply block w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted
+    focus:border-accent focus:outline-2 focus:outline-offset-0 focus:outline-accent/30 aria-invalid:border-danger;
+}
+@utility label {
+  @apply mb-1 block text-sm font-medium text-ink-2;
+}
+@utility th {
+  @apply px-3 py-2.5 text-left text-xs font-semibold tracking-wide text-muted uppercase;
+}
+@utility td {
+  @apply px-3 py-2.5 align-top text-sm;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,99 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch: # allows a manual run from the GitHub "Actions" tab
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: outreach
+          POSTGRES_PASSWORD: outreach
+          POSTGRES_DB: outreach_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U outreach" --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://outreach:outreach@localhost:5432/outreach_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Backend tests
+        working-directory: backend
+        run: npm ci && npm test
+      - name: Frontend tests and build
+        working-directory: frontend
+        run: npm ci && npm test && npm run build
+      - name: Dependency audit
+        run: |
+          (cd backend && npm audit --omit=dev --audit-level=high)
+          (cd frontend && npm audit --omit=dev --audit-level=high)
+
+  # Builds the production image exactly as Render will, boots it against a real
+  # PostgreSQL and smoke-tests it - so the Dockerfile is verified without
+  # needing Docker on a developer machine.
+  docker:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: outreach
+          POSTGRES_PASSWORD: outreach
+          POSTGRES_DB: outreach
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U outreach" --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t rural-outreach .
+
+      - name: Start container
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL=postgres://outreach:outreach@localhost:5432/outreach \
+            -e JWT_SECRET=ci-only-jwt-secret-not-for-production-0123 \
+            -e PSEUDONYM_SECRET=ci-only-pseudonym-secret-not-for-prod-0123 \
+            -e SEED_DEMO_DATA=true \
+            -e COOKIE_SECURE=false \
+            rural-outreach
+
+      - name: Wait for the app to become healthy
+        run: |
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:4000/api/health; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "App did not become healthy in 90s"; exit 1
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          # Frontend is served from the same origin
+          curl -sf http://localhost:4000/ | grep -q '<div id="root">'
+          curl -sf http://localhost:4000/encounters | grep -q '<div id="root">'   # SPA deep link
+          # Security headers are present
+          curl -sfI http://localhost:4000/api/health | grep -qi 'content-security-policy'
+          # Unauthenticated API access is refused
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/encounters)" = "401"
+          # Demo login works and analytics return seeded data
+          TOKEN=$(curl -sf -X POST http://localhost:4000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"doctor@demo.local","password":"Demo@2026!"}' | jq -r .accessToken)
+          curl -sf http://localhost:4000/api/analytics/summary -H "Authorization: Bearer $TOKEN" \
+            | jq -e '.totals.encounters > 0' > /dev/null
+          # Container runs as a non-root user
+          test "$(docker exec app id -u)" != "0"
+          echo "Docker image smoke test passed"
+
+      - name: Container logs
+        if: always()
+        run: docker logs app || true

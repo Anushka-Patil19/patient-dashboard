@@ -1,0 +1,41 @@
+# Local stack: PostgreSQL + the app (API serving the built frontend).
+#   docker compose up --build        -> http://localhost:4000
+# For development with hot reload, run only the database:
+#   docker compose up -d db
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: outreach
+      POSTGRES_PASSWORD: outreach
+      POSTGRES_DB: outreach
+    ports:
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/scripts/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outreach"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://outreach:outreach@db:5432/outreach
+      # Local-only secrets. Generate real ones for any shared deployment.
+      JWT_SECRET: local-docker-jwt-secret-change-me-0123456789
+      PSEUDONYM_SECRET: local-docker-pseudonym-secret-change-me-0123
+      SEED_DEMO_DATA: "true"
+      # Plain HTTP on localhost: secure cookies would not be sent back.
+      COOKIE_SECURE: "false"
+    ports:
+      - "4000:4000"
+
+volumes:
+  pgdata:
